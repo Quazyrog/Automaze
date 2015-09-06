@@ -1,0 +1,2 @@
+# Automaze
+simple maze game
