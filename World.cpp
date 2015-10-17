@@ -59,6 +59,8 @@ void World::makeRandom(unsigned int seed) noexcept
         for (unsigned int yi = 0; yi < height_; ++yi) {
             if (std::rand() % 4 == 0)
                 data_[xi][yi] = Brick::WALL;
+            else 
+                data_[xi][yi] = Brick::FLOOR;
         }
     }
     
