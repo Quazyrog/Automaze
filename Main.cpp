@@ -1,15 +1,24 @@
 #include <iostream>
 #include "World.hpp"
+#include "GameWindow.hpp"
+#include "Exception.hpp"
+
+#define EXIT_CODE_NORMAL 0
+#define EXIT_CODE_INITIALIZATION_FAILED 1
 
 
 int main(int argc, char **argv)
 {
-    World world(200, 70);
-    world.makeRandom(0);
-    for (unsigned int yi = 0; yi < world.height(); ++yi) {
-        for (unsigned int xi = 0; xi < world.width(); ++xi) 
-            std::cerr << (world.get(xi, yi) == World::Brick::WALL ? '#' : ' ');
-        std::cerr << '\n';
+    GameWindow *window;
+    try {
+        window = new GameWindow();
+    } catch (GLEWInitializationError) {
+        std::cerr << "ERROR: cannot initialize main window (GLEW initialization failed)." << std::endl;
+        return EXIT_CODE_INITIALIZATION_FAILED;
+    } catch (GLFWInitializationError) {
+        std::cerr << "ERROR: cannot initialize main window (cannot initialize GLFW library)." << std::endl;
+        return EXIT_CODE_INITIALIZATION_FAILED;
     }
-    return 0;
+    
+    return EXIT_CODE_NORMAL;
 }

@@ -4,7 +4,9 @@ LIBS = -lGL -lSOIL -lglfw -lGL
 OBJECTS = Main.o \
 	  World.o \
 	  Exception.o \
-	  FindAndUnion.o
+	  FindAndUnion.o \
+	  GameWindow.o \
+	  GLMatrix.o
 
 
 .cpp.o:
