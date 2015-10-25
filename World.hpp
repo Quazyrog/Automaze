@@ -20,6 +20,7 @@ public:
         FLOOR = 0,
         ///Only ghosts are capable to pass this one
         WALL,
+        DIAMOND
     };
     
 protected:
@@ -38,6 +39,8 @@ protected:
      * \brief World's height (in fields)
      */
     unsigned int height_;
+    
+    unsigned int diamondCounter_ = 0;
     
     /**
      * \brief Counts walls around given field.
@@ -103,6 +106,10 @@ public:
     void set(unsigned int x, unsigned int y, Brick field) {
         if (x >= width_ || y >= height_)
             throw IndexError();
+        if (field == World::Brick::DIAMOND)
+            ++diamondCounter_;
+        if (data_[x][y] == World::Brick::DIAMOND)
+            --diamondCounter_;
         data_[x][y] = field;
     }
     
@@ -134,6 +141,10 @@ public:
     
     float playerY() {
         return playerY_;
+    }
+    
+    unsigned int diamondCounter() {
+        return diamondCounter_;
     }
 };
 

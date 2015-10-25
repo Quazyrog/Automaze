@@ -100,6 +100,9 @@ int main()
     }
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_MULTISAMPLE);
+    glEnable(GL_BLEND);
+    glEnable(GL_LINE_SMOOTH);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
     
     GLuint shader_program, vertex_shader, fragment_shader;
@@ -110,8 +113,7 @@ int main()
     }
     fragment_shader = CompileShader("shader.frag", GL_FRAGMENT_SHADER);
     if (vertex_shader == 0) {
-        glDeleteShader(vertex_shader);
-        std::cerr << "Vertex shader compilation failed." << std::endl;
+        std::cerr << "Fragment shader compilation failed." << std::endl;
         return 1;
     }
     shader_program = glCreateProgram();
@@ -133,13 +135,13 @@ int main()
     glUseProgram(shader_program);
     
     
-    GLuint vao[2];
-    glGenVertexArrays(2, vao);
+    GLuint vao[3];
+    glGenVertexArrays(3, vao);
     GLuint attrib;
-    World world(40, 20);
+    World world(24, 16);
     world.makeRandom(time(nullptr));
-    GLuint *vbo = new GLuint [2];
-    glGenBuffers(2, vbo);
+    GLuint *vbo = new GLuint [3];
+    glGenBuffers(3, vbo);
     
     const GLfloat wall_vertices[] = {
         -1,  -1,   1,  0,  0,
@@ -180,6 +182,57 @@ int main()
     glVertexAttribPointer(attrib, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
     
     
+    GLuint shader_program2;
+    vertex_shader = CompileShader("shader_no_texture.vert", GL_VERTEX_SHADER);
+    if (vertex_shader == 0) {
+        std::cerr << "Vertex shader compilation failed." << std::endl;
+        return 1;
+    }
+    fragment_shader = CompileShader("shader_no_texture.frag", GL_FRAGMENT_SHADER);
+    if (vertex_shader == 0) {
+        std::cerr << "Fragment shader compilation failed." << std::endl;
+        return 1;
+    }
+    shader_program2 = glCreateProgram();
+    glAttachShader(shader_program2, vertex_shader);
+    glAttachShader(shader_program2, fragment_shader);
+    glBindFragDataLocation(shader_program2, 0, "so_color");
+    glLinkProgram(shader_program2);
+    glGetProgramiv(shader_program2, GL_LINK_STATUS, &link_status);
+    if (link_status != GL_TRUE) {
+        std::cerr << "Shader program linking failed. Log:" << std::endl;
+        DumpLogs(shader_program2, false);
+        return 1;
+    }
+    glDetachShader(vertex_shader, shader_program2);
+    glDeleteShader(vertex_shader);
+    glDetachShader(fragment_shader, shader_program2);
+    glDeleteShader(fragment_shader);
+    glUseProgram(shader_program2);
+    
+    const GLfloat diamond_vertices[] = {
+         0,    -0.5,  0,
+        -0.5,   0,    0,
+         0,     0,   -0.5,
+         0.5,   0,    0,
+         0,     0,    0.5,
+        -0.5,   0,    0,
+        
+         0,     0.5,  0,
+        -0.5,   0,    0,
+         0,     0,    0.5,
+         0.5,   0,    0,
+         0,     0,   -0.5,
+        -0.5,   0,    0,
+    };
+    glBindVertexArray(vao[2]);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo[2]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(diamond_vertices), diamond_vertices, GL_STATIC_DRAW);
+    attrib = glGetAttribLocation(shader_program2, "si_position");
+    glEnableVertexAttribArray(attrib);
+    glVertexAttribPointer(attrib, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), nullptr);
+    
+    
     GLuint textures[2];
     glGenTextures(2, textures);
     int texwidth, texheight;
@@ -206,49 +259,54 @@ int main()
     const GLMatrix projection_matrix = GLMatrix::Projection(static_cast<float>(vidmode->width) / std::max(vidmode->width, vidmode->height), 
                                                             static_cast<float>(vidmode->height) / std::max(vidmode->width, vidmode->height), 
                                                             0.5, 20);
+    GLMatrix diamond_rotation_matrix = GLMatrix::Identity();
     float player_angle = 0;
-    world.set(world.width() / 2 + 1, world.height() / 2 - 1, World::Brick::FLOOR);
+    world.set(world.width() / 2 + 1, world.height() / 2 - 1, World::Brick::DIAMOND);
     world.set(world.width() / 2 + 1, world.height() / 2,     World::Brick::FLOOR);
-    world.set(world.width() / 2 + 1, world.height() / 2 + 1, World::Brick::FLOOR);
+    world.set(world.width() / 2 + 1, world.height() / 2 + 1, World::Brick::DIAMOND);
     world.set(world.width() / 2,     world.height() / 2 - 1, World::Brick::FLOOR);
     world.set(world.width() / 2,     world.height() / 2,     World::Brick::FLOOR);
     world.set(world.width() / 2,     world.height() / 2 + 1, World::Brick::FLOOR);
-    world.set(world.width() / 2 - 1, world.height() / 2 - 1, World::Brick::FLOOR);
+    world.set(world.width() / 2 - 1, world.height() / 2 - 1, World::Brick::DIAMOND);
     world.set(world.width() / 2 - 1, world.height() / 2,     World::Brick::FLOOR);
-    world.set(world.width() / 2 - 1, world.height() / 2 + 1, World::Brick::FLOOR);
+    world.set(world.width() / 2 - 1, world.height() / 2 + 1, World::Brick::DIAMOND);
     const float x_shift = -(float)world.width();
     const float y_shift = -(float)world.height();
     world.setPlayerPosition(world.width() / 2.0f, world.height() / 2.0f);
+//     std::cerr << world.playerX() << " " << world.playerY();
     
     auto last_frame = std::chrono::high_resolution_clock::now();
-    while (!glfwWindowShouldClose(main_window)) {
+    while (!glfwWindowShouldClose(main_window) && world.diamondCounter() > 0) {
         auto now = std::chrono::high_resolution_clock::now();
-        float time_factor = std::chrono::duration<float>(now - last_frame).count() * 40.0f;
+        float time_factor = std::chrono::duration<float>(now - last_frame).count();
         last_frame = now;
+        diamond_rotation_matrix *= GLMatrix::Rotation(M_PI *  time_factor, 0, 1, 0);
         glfwPollEvents();
         if (glfwGetKey(main_window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
             glfwSetWindowShouldClose(main_window, GL_TRUE);
         if (glfwGetKey(main_window, GLFW_KEY_UP) == GLFW_PRESS) 
-            world.stepPlayer(sin(player_angle) * 0.04f * time_factor, cos(player_angle) * 0.04f * time_factor);
+            world.stepPlayer(sin(player_angle) * 1.6f * time_factor, cos(player_angle) * 1.6f * time_factor);
         if (glfwGetKey(main_window, GLFW_KEY_DOWN) == GLFW_PRESS) 
-            world.stepPlayer(sin(player_angle) * -0.04f * time_factor, cos(player_angle) * -0.04f * time_factor);
+            world.stepPlayer(sin(player_angle) * -1.6f * time_factor, cos(player_angle) * -1.6f * time_factor);
         if (glfwGetKey(main_window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
             if (glfwGetKey(main_window, GLFW_KEY_DOWN) == GLFW_PRESS || glfwGetKey(main_window, GLFW_KEY_UP) == GLFW_PRESS) 
-                player_angle -= M_PI / 150.0f * time_factor;
+                player_angle -= M_PI * 0.266f * time_factor;
             else
-                player_angle -= M_PI / 50.0f * time_factor;
+                player_angle -= M_PI * 0.8f * time_factor;
         }
         if (glfwGetKey(main_window, GLFW_KEY_LEFT) == GLFW_PRESS) {
             if (glfwGetKey(main_window, GLFW_KEY_DOWN) == GLFW_PRESS || glfwGetKey(main_window, GLFW_KEY_UP) == GLFW_PRESS) 
-                player_angle += M_PI / 150.0f * time_factor;
+                player_angle += M_PI * 0.266f * time_factor;
             else
-                player_angle += M_PI / 50.0f * time_factor;
+                player_angle += M_PI * 0.8f * time_factor;
         }
         
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         GLMatrix player_matrix = GLMatrix::Rotation(player_angle, 0, 1, 0) * GLMatrix::Translation(world.playerX() * 2.0f + x_shift, 0, world.playerY() * 2.0f + y_shift);
         GLMatrix mvp_matrix;
         
+        glUseProgram(shader_program);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         glBindTexture(GL_TEXTURE_2D, textures[1]);
         glBindVertexArray(vao[1]);
         mvp_matrix = projection_matrix * player_matrix;
@@ -262,17 +320,33 @@ int main()
         glBindVertexArray(vao[0]);
         for (unsigned int x = 0; x < world.width(); ++x) {
             for (unsigned int y = 0; y < world.height(); ++y) {
-                if (world.get(x, y) != World::Brick::WALL) {
+                if (world.get(x, y) != World::Brick::WALL) 
                     continue;
-                }
                 mvp_matrix = projection_matrix * player_matrix * GLMatrix::Translation(-2.0f * x - x_shift - 1.0f, 0, -2.0f * y - y_shift - 1.0f);
                 glUniformMatrix4fv(glGetUniformLocation(shader_program, "MVPMatrix"), 1, GL_FALSE, mvp_matrix.data());
                 glDrawArrays(GL_TRIANGLE_STRIP, 0, 10);
             }
         }
         
+        glEnable(GL_CULL_FACE);
+        glUseProgram(shader_program2);
+        glBindVertexArray(vao[2]);
+        glUniformMatrix4fv(glGetUniformLocation(shader_program2, "u_mvp_matrix"), 1, GL_FALSE, GLMatrix::Identity().data());
+        for (unsigned int x = 0; x < world.width(); ++x) {
+            for (unsigned int y = 0; y < world.height(); ++y) {
+                if (world.get(x, y) != World::Brick::DIAMOND) 
+                    continue;
+                mvp_matrix = projection_matrix * player_matrix * GLMatrix::Translation(-2.0f * x - x_shift - 1.0f, -0.3f, -2.0f * y - y_shift - 1.0f) * diamond_rotation_matrix;
+                glUniformMatrix4fv(glGetUniformLocation(shader_program, "MVPMatrix"), 1, GL_FALSE, mvp_matrix.data());
+                glDrawArrays(GL_TRIANGLE_FAN, 0, 6);
+                glDrawArrays(GL_TRIANGLE_FAN, 6, 6);
+            }
+        }
+        glDisable(GL_CULL_FACE);
+        
         glfwSwapBuffers(main_window);
     }
+    this_thread::sleep_for(std::chrono::seconds(3));
     
     glfwDestroyWindow(main_window);
     return 0;

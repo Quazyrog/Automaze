@@ -13,4 +13,5 @@ void main()
     if (fog_scalar < 0)
         discard;
     o_color = fog_scalar * texture(Tex, _texcoord);
+    o_color.a = 1;
 }

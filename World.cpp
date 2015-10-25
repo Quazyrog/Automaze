@@ -149,6 +149,15 @@ void World::makeRandom(unsigned int seed) noexcept
             }
         }
     }
+    
+    for (unsigned int xi = 0; xi < width_; ++xi) {
+            for (unsigned int yi = 0; yi < height_; ++yi) {
+                if (data_[xi][yi] == Brick::FLOOR && rand() % 8 == 0) {
+                    data_[xi][yi] = Brick::DIAMOND;
+                    ++diamondCounter_;
+                }
+            }
+    }
 }
 
 
@@ -157,6 +166,8 @@ void World::stepPlayer(float step_x, float step_y)
     const float margin = 0.4;
     unsigned int player_x = playerX_;
     unsigned int player_y = playerY_;
+    if (get(player_x, player_y) == Brick::DIAMOND) 
+        set(player_x, player_y, World::Brick::FLOOR);
     playerX_ += step_x;
     playerY_ += step_y;
     if (get(player_x - 1, player_y) == Brick::WALL)
