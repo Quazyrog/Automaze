@@ -152,3 +152,20 @@ void World::makeRandom(unsigned int seed) noexcept
 }
 
 
+void World::stepPlayer(float step_x, float step_y)
+{
+    const float margin = 0.4;
+    unsigned int player_x = playerX_;
+    unsigned int player_y = playerY_;
+    playerX_ += step_x;
+    playerY_ += step_y;
+    if (get(player_x - 1, player_y) == Brick::WALL)
+        playerX_ = std::max(playerX_, player_x + margin);
+    if (get(player_x + 1, player_y) == Brick::WALL)
+        playerX_ = std::min(playerX_, player_x + 1.0f - margin);
+    if (get(player_x, player_y - 1) == Brick::WALL)
+        playerY_ = std::max(playerY_, player_y + margin);
+    if (get(player_x, player_y + 1) == Brick::WALL)
+        playerY_ = std::min(playerY_, player_y + 1.0f - margin);
+}
+

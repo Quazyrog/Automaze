@@ -49,6 +49,9 @@ protected:
      */
     unsigned int countAdjacentWalls_(unsigned int x, unsigned int y);
     
+    float playerX_;
+    float playerY_;
+    
 public:
     /**
      * \brief Creates new empty maze of given size
@@ -117,6 +120,21 @@ public:
      * \param seed argument for srand function called before the generation starts
      */
     void makeRandom(unsigned int seed) noexcept;
+    
+    void setPlayerPosition(float x, float y) {
+        playerX_ = x;
+        playerY_ = y;
+    }
+    
+    void stepPlayer(float step_x, float step_y);
+    
+    float playerX() {
+        return playerX_;
+    }
+    
+    float playerY() {
+        return playerY_;
+    }
 };
 
 #endif

@@ -1,6 +1,8 @@
 #include "GameWindow.hpp"
 #include "Exception.hpp"
 
+#include <fstream>
+
 GameWindow::GameWindow()
 {
     if (glfwInit() != GL_TRUE)
@@ -12,8 +14,8 @@ GameWindow::GameWindow()
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
     GLFWmonitor *main_monitor = glfwGetPrimaryMonitor();
     const GLFWvidmode *vidmode = glfwGetVideoMode(main_monitor);
-    glfwWindow_ = glfwCreateWindow(vidmode->width, vidmode->height, "Cube", main_monitor, nullptr);
-    glfwMakeContextCurrent(main_window);
+    glfwWindow_ = glfwCreateWindow(vidmode->width, vidmode->height, "Automaze", main_monitor, nullptr);
+    glfwMakeContextCurrent(glfwWindow_);
     glewExperimental = GL_TRUE;
     if (glewInit() != GLEW_OK) {
         throw GLEWInitializationError();
@@ -27,4 +29,12 @@ GameWindow::GameWindow()
 GameWindow::~GameWindow()
 {
     glfwDestroyWindow(glfwWindow_);
+}
+
+
+GLuint GameWindow::compileShader_(std::string path, GLuint shader_type)
+{
+    GLuint shader_id = glCreateShader(shader_type);
+    std::ifstream source_stream(path);
+    
 }

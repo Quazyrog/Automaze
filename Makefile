@@ -1,11 +1,10 @@
 CC = g++
 CC_FLAGS = -std=c++11 -Wall -Wextra -g
-LIBS = -lGL -lSOIL -lglfw -lGL
+LIBS = -lGL -lSOIL -lglfw -lGLEW
 OBJECTS = Main.o \
 	  World.o \
 	  Exception.o \
 	  FindAndUnion.o \
-	  GameWindow.o \
 	  GLMatrix.o
 
 
