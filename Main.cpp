@@ -77,6 +77,40 @@ GLuint CompileShader(string file, GLenum shader_type)
 }
 
 
+
+void render_ui(unsigned char *ui_texture, int number = 6789) 
+{
+    auto index = [](int x, int y) {return (80 * y + x) * 4;};
+    const short DIGITS[] = {
+            15214,
+            9874,
+            31119,
+            30887,
+            23524,
+            29411,
+            25582,
+            30857,
+            31727,
+            27619
+        };
+        
+    memset(ui_texture, 0, 80 * 7 * 4 * sizeof(unsigned char));
+    
+    for (int digit = 0; number > 0; ++digit, number /= 10) {
+        for (int y = 0; y < 5; ++y) {
+            for (int x = 0; x < 3; ++x) {
+                if (DIGITS[number % 10] & (1 << (x + 3 * y))) {
+                    ui_texture[index(x + 76 - 4 * digit, y + 1) + 0] = 255;
+                    ui_texture[index(x + 76 - 4 * digit, y + 1) + 1] = 255;
+                    ui_texture[index(x + 76 - 4 * digit, y + 1) + 2] = 255;
+                    ui_texture[index(x + 76 - 4 * digit, y + 1) + 3] = 255;
+                }
+            }
+        }
+    }
+}
+
+
 int main()
 {
     if (glfwInit() != GL_TRUE) {
@@ -135,13 +169,13 @@ int main()
     glUseProgram(shader_program);
     
     
-    GLuint vao[3];
-    glGenVertexArrays(3, vao);
+    GLuint vao[4];
+    glGenVertexArrays(4, vao);
     GLuint attrib;
-    World world(24, 16);
+    World world(36, 25);
     world.makeRandom(time(nullptr));
-    GLuint *vbo = new GLuint [3];
-    glGenBuffers(3, vbo);
+    GLuint *vbo = new GLuint [4];
+    glGenBuffers(4, vbo);
     
     const GLfloat wall_vertices[] = {
         -1,  -1,   1,  0,  0,
@@ -180,7 +214,23 @@ int main()
     attrib = glGetAttribLocation(shader_program, "texcoord");
     glEnableVertexAttribArray(attrib);
     glVertexAttribPointer(attrib, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
-    
+
+    const GLfloat ui_overlay_vertices[] = {
+        -1,  1, 0, 0, 1,
+        -1, -1, 0, 0, 0,
+         1,  1, 0, 1, 1,
+         1, -1, 0, 1, 0
+    };
+    glBindVertexArray(vao[3]);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo[3]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(ui_overlay_vertices), ui_overlay_vertices, GL_STATIC_DRAW);
+    attrib = glGetAttribLocation(shader_program, "position");
+    glEnableVertexAttribArray(attrib);
+    glVertexAttribPointer(attrib, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), nullptr);
+    attrib = glGetAttribLocation(shader_program, "texcoord");
+    glEnableVertexAttribArray(attrib);
+    glVertexAttribPointer(attrib, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
+        
     
     GLuint shader_program2;
     vertex_shader = CompileShader("shader_no_texture.vert", GL_VERTEX_SHADER);
@@ -233,8 +283,8 @@ int main()
     glVertexAttribPointer(attrib, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), nullptr);
     
     
-    GLuint textures[2];
-    glGenTextures(2, textures);
+    GLuint textures[3];
+    glGenTextures(3, textures);
     int texwidth, texheight;
     unsigned char *image;
     image = SOIL_load_image("wall.png", &texwidth, &texheight, nullptr, SOIL_LOAD_RGB);
@@ -254,6 +304,15 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    
+    glBindTexture(GL_TEXTURE_2D, textures[2]);
+    unsigned char *ui_texture = new unsigned char[80 * 60 * 4];
+    memset(ui_texture, 0, 80 * 60 * 4 * sizeof(unsigned char));
+    glBindTexture(GL_TEXTURE_2D, textures[2]);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 80, 60, 0, GL_RGBA, GL_UNSIGNED_BYTE, ui_texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    
     
     
     const GLMatrix projection_matrix = GLMatrix::Projection(static_cast<float>(vidmode->width) / std::max(vidmode->width, vidmode->height), 
@@ -276,6 +335,8 @@ int main()
 //     std::cerr << world.playerX() << " " << world.playerY();
     
     auto last_frame = std::chrono::high_resolution_clock::now();
+    
+    unsigned int last_counter_value = 0;
     while (!glfwWindowShouldClose(main_window) && world.diamondCounter() > 0) {
         auto now = std::chrono::high_resolution_clock::now();
         float time_factor = std::chrono::duration<float>(now - last_frame).count();
@@ -343,6 +404,19 @@ int main()
             }
         }
         glDisable(GL_CULL_FACE);
+        
+        glDisable(GL_DEPTH_TEST);
+        glUseProgram(shader_program);
+        glBindTexture(GL_TEXTURE_2D, textures[2]);
+        if (last_counter_value != world.diamondCounter()) {
+            last_counter_value = world.diamondCounter();
+            render_ui(ui_texture, int(world.diamondCounter()));
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 80, 60, GL_RGBA, GL_UNSIGNED_BYTE, ui_texture);
+        }
+        glUniformMatrix4fv(glGetUniformLocation(shader_program, "MVPMatrix"), 1, GL_FALSE, GLMatrix::Identity().data());
+        glBindVertexArray(vao[3]);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        glEnable(GL_DEPTH_TEST);
         
         glfwSwapBuffers(main_window);
     }

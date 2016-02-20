@@ -10,8 +10,11 @@ uniform sampler2D Tex;
 void main()
 {
     float fog_scalar = 1.0 - length(_coord) / 18;
+    float alpha;
     if (fog_scalar < 0)
         discard;
-    o_color = fog_scalar * texture(Tex, _texcoord);
-    o_color.a = 1;
+    o_color = texture(Tex, _texcoord);
+    alpha = o_color.a;
+    o_color = fog_scalar * o_color;
+    o_color.a = alpha;
 }
